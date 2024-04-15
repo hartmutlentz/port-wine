@@ -36,7 +36,7 @@ class Portfolio:
         self.returns = self.get_returns()
 
         if weights is None:
-            self.weights = [1 for _ in range(len(assets))]
+            self.weights = [1.0 / len(assets) for _ in range(len(assets))]
         else:
             self.weights = weights
 
@@ -54,6 +54,7 @@ class Portfolio:
         return X.iloc[1:]
 
     def weighted_prices(self, delete_unweighted=False):
+        """Prices including weights."""
         X = self.prices.copy()
         for a, w in zip(self.asset_names, self.weights):
             X[a + "_weighted"] = X[a] * w
@@ -64,23 +65,37 @@ class Portfolio:
 
     def get_expected_return(self):
         """Expectation value of returns."""
-        pass
+        return self.returns.mean()
 
-    def get_correlation_matrix(self):
+    def get_correlation_matrix(self, as_numpy=False):
         """Correlation matrix between all assets as numpy matrix."""
         if self.is_single_asset:
             raise NotImplementedError('No (auto-)correlation for a single asset.')
+        if as_numpy:
+            return self.returns.corr().to_numpy()
+        else:
+            return self.returns.corr()
+
+    def get_weight_vector(self):
+        return np.matrix(self.weights)
 
     def total_value(self):
         """Return the total value of the portfolio as time series."""
-        pass
+        return self.weighted_prices(delete_unweighted=True).sum(axis=1)
 
     def current_value(self):
         """Current value of the portfolio"""
-        pass
+        return self.total_value().iloc[-1]
 
 
 if __name__ == "__main__":
-    P = Portfolio(['AMZN', 'GOOG', 'WMT', 'TSLA', 'META'], weights=[2, 1, 1, 1, 1])
+    P = Portfolio(['AMZN', 'GOOG', 'WMT', 'TSLA', 'META'], weights=[2.5, 1, 1, 1, 1])
     #P = Portfolio(assets=['AMZN'])
-    print(P.weighted_prices(delete_unweighted=True))
+    print(P.returns)
+
+    # Variance of Portfolio return
+    sigma = P.get_correlation_matrix(True)
+    w = P.get_weight_vector()
+    print(np.matmul(np.matmul(w, sigma), w.T))
+
+
