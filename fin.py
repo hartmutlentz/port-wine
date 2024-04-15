@@ -6,9 +6,5 @@ import yfinance as yf
 from pprint import pprint
 
 pfe = yf.Ticker('PFE')
-#pprint(pfe.actions)
+pprint(pfe.info)
 
-dividends = pfe.actions
-
-prices = pfe.history(period="6Mo")
-print(prices)
