@@ -1,6 +1,7 @@
 import yfinance as yf
 import numpy as np
 from Asset import Asset
+from pprint import pprint
 
 
 class Portfolio:
@@ -9,7 +10,7 @@ class Portfolio:
 
     """
 
-    def __init__(self, assets: list, period: str = "6Mo", weights: list = None):
+    def __init__(self, assets: list, weights_amounts: list = None, period: str = "6Mo"):
         """
         Parameters
         ----------
@@ -20,10 +21,11 @@ class Portfolio:
             Considered time period. Interval [period, now]. Resolution is 1 day.
             Allowed values: 1m, 2m, 5m, 15m, 30m, 60m, 90m, 1h, 1d, 5d, 1wk, 1mo, 3mo, 6Mo
 
-        weights : list (optional)
+        weights_amounts : list (optional)
             Weights of the assets given as float numbers. If not given, assets weights are equally distributed.
 
         """
+        # basic properties
         self.asset_names = assets
         self.period = period
         if len(assets) > 1:
@@ -35,10 +37,18 @@ class Portfolio:
         self.prices = self.get_prices()
         self.returns = self.get_returns()
 
-        if weights is None:
-            self.weights = [1.0 / len(assets) for _ in range(len(assets))]
+        # weights and amounts
+        if weights_amounts:
+            if abs(sum(weights_amounts) - 1.0) < 1.e-8:
+                self.weights = weights_amounts
+                self.amounts = self.estimate_amounts_from_weights()
+            else:
+                self.amounts = weights_amounts
+                self.weights = [float(i) / sum(self.amounts) for i in self.amounts]
         else:
-            self.weights = weights
+            self.weights = [1.0 / len(assets) for _ in range(len(assets))]
+            self.amounts = [1 for _ in range(len(assets))]
+
 
     def get_prices(self, price_time: str = "Close"):
         """Return price data."""
@@ -53,21 +63,27 @@ class Portfolio:
 
         return X.iloc[1:]
 
-    def weighted_prices(self, delete_unweighted=False):
-        """Prices including weights."""
+    def total_prices(self, delete_unweighted=False):
+        """Prices including amounts."""
         X = self.prices.copy()
-        for a, w in zip(self.asset_names, self.weights):
-            X[a + "_weighted"] = X[a] * w
+        for a, w in zip(self.asset_names, self.amounts):
+            X[a + "_total"] = X[a] * w
 
         if delete_unweighted:
             X.drop(self.asset_names, axis=1, inplace=True)
         return X
 
-    def get_expected_return(self):
+    def estimate_amounts_from_weights(self, x):
+        """Given a list of weights, return a list of integers, such that the weight remains the same."""
+        factor = round(1.0/min(x))
+        amounts = [i * factor for i in x]
+        return amounts
+
+    def expected_return(self):
         """Expectation value of returns."""
         return self.returns.mean()
 
-    def get_correlation_matrix(self, as_numpy=False):
+    def correlation_matrix(self, as_numpy=False):
         """Correlation matrix between all assets as numpy matrix."""
         if self.is_single_asset:
             raise NotImplementedError('No (auto-)correlation for a single asset.')
@@ -76,12 +92,12 @@ class Portfolio:
         else:
             return self.returns.corr()
 
-    def get_weight_vector(self):
+    def weight_vector(self):
         return np.matrix(self.weights)
 
     def total_value(self):
         """Return the total value of the portfolio as time series."""
-        return self.weighted_prices(delete_unweighted=True).sum(axis=1)
+        return self.total_prices(delete_unweighted=True).sum(axis=1)
 
     def current_value(self):
         """Current value of the portfolio"""
@@ -89,13 +105,17 @@ class Portfolio:
 
 
 if __name__ == "__main__":
-    P = Portfolio(['AMZN', 'GOOG', 'WMT', 'TSLA', 'META'], weights=[2.5, 1, 1, 1, 1])
+    a = ['AMZN', 'GOOG', 'WMT', 'TSLA', 'META']
+    a = ['AMZN', 'GOOG']
+    P = Portfolio(assets=a, weights_amounts=[2.5, 1, 1, 1, 1])
     #P = Portfolio(assets=['AMZN'])
     print(P.returns)
 
     # Variance of Portfolio return
-    sigma = P.get_correlation_matrix(True)
-    w = P.get_weight_vector()
-    print(np.matmul(np.matmul(w, sigma), w.T))
+    sigma = P.correlation_matrix(True)
+    w = P.weight_vector()
+    #print(np.matmul(np.matmul(w, sigma), w.T))
+
+    pprint(P.total_prices())
 
 
