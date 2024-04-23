@@ -1,6 +1,7 @@
 import yfinance as yf
 import numpy as np
-from Asset import Asset
+from Finanzen.Asset import Asset
+import Finanzen.Tools as tl
 from pprint import pprint
 
 
@@ -10,7 +11,7 @@ class Portfolio:
 
     """
 
-    def __init__(self, assets: list, weights_amounts: list = None, period: str = "6Mo"):
+    def __init__(self, assets, period: str = "6Mo"):
         """
         Parameters
         ----------
@@ -25,8 +26,26 @@ class Portfolio:
             Weights of the assets given as float numbers. If not given, assets weights are equally distributed.
 
         """
+        # input cases
+        if isinstance(assets, list):
+            self.asset_names = assets
+            self.weights = [1.0 / len(assets) for _ in range(len(assets))]
+            self.amounts = [1 for _ in range(len(assets))]
+        elif isinstance(assets, dict):
+            x, y = tl.dict2lists(assets)
+            self.asset_names = x
+            if abs(sum(y) - 1.0) < 1.e-8:
+                # weights-input is assumed as normalized to one
+                self.weights = y
+                self.amounts = self.estimate_amounts_from_weights()
+            else:
+                # weights-input is assumed as total numbers
+                self.amounts = y
+                self.weights = [float(i) / sum(self.amounts) for i in self.amounts]
+        else:
+            raise ImportError("Portfolio must be given as list or dict.")
+
         # basic properties
-        self.asset_names = assets
         self.period = period
         if len(assets) > 1:
             self.is_single_asset = False
@@ -34,21 +53,9 @@ class Portfolio:
         else:
             self.is_single_asset = True
             self.Tickers = yf.Ticker(self.asset_names[0])
+
         self.prices = self.get_prices()
         self.returns = self.get_returns()
-
-        # weights and amounts
-        if weights_amounts:
-            if abs(sum(weights_amounts) - 1.0) < 1.e-8:
-                self.weights = weights_amounts
-                self.amounts = self.estimate_amounts_from_weights()
-            else:
-                self.amounts = weights_amounts
-                self.weights = [float(i) / sum(self.amounts) for i in self.amounts]
-        else:
-            self.weights = [1.0 / len(assets) for _ in range(len(assets))]
-            self.amounts = [1 for _ in range(len(assets))]
-
 
     def get_prices(self, price_time: str = "Close"):
         """Return price data."""
@@ -103,19 +110,22 @@ class Portfolio:
         """Current value of the portfolio"""
         return self.total_value().iloc[-1]
 
-
 if __name__ == "__main__":
     a = ['AMZN', 'GOOG', 'WMT', 'TSLA', 'META']
-    a = ['AMZN', 'GOOG']
-    P = Portfolio(assets=a, weights_amounts=[2.5, 1, 1, 1, 1])
+    weights = [1, 2, 3, 4, 4]
+    weighted_assets = tl.lists2dict(a, weights)
+
+    #a = ['AMZN', 'GOOG']
+    P = Portfolio(assets=a)
+    print(P.asset_names,'\n', P.weights, '\n', P.amounts)
     #P = Portfolio(assets=['AMZN'])
-    print(P.returns)
+    #print(P.returns)
 
     # Variance of Portfolio return
-    sigma = P.correlation_matrix(True)
-    w = P.weight_vector()
+    #sigma = P.correlation_matrix(True)
+    #w = P.weight_vector()
     #print(np.matmul(np.matmul(w, sigma), w.T))
 
-    pprint(P.total_prices())
+    #pprint(P.total_prices())
 
 
