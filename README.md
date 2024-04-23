@@ -5,4 +5,4 @@ Simple portfolio optimization
 [] fix dict for weights (Hardy)
 [] add Notebook
 [] add matplotlib
-[] add Optimizer
+[] add Optimizer (Alan)
