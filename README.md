@@ -1,5 +1,5 @@
-# simple-solver
-Simple portfolio optimization
+# port-wine
+Portfolio optimization using Yahoo!-Finance data.
 
 # Open Tasks
 [x] fix dict for weights (Hardy)
