@@ -1,5 +1,6 @@
 import yfinance as yf
 import numpy as np
+import pandas as pd
 from Finanzen.Asset import Asset
 import Finanzen.Tools as tl
 from pprint import pprint
@@ -90,6 +91,16 @@ class Portfolio:
         """Expectation value of returns."""
         return self.returns.mean()
 
+    def excpected_risk(self):
+        """Standard deviation."""
+        return self.returns.std()
+
+    def risk_profile(self):
+        """"""
+        df = pd.concat([self.expected_return(), self.excpected_risk()], axis=1)
+        df.columns=["Expected Return", "Risk"]
+        return df
+
     def correlation_matrix(self, as_numpy=False):
         """Correlation matrix between all assets as numpy matrix."""
         if self.is_single_asset:
@@ -118,6 +129,9 @@ if __name__ == "__main__":
     #a = ['AMZN', 'GOOG']
     P = Portfolio(assets=a)
     print(P.asset_names,'\n', P.weights, '\n', P.amounts)
+
+    print(P.risk_profile())
+
     #P = Portfolio(assets=['AMZN'])
     #print(P.returns)
 

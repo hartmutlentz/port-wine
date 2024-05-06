@@ -7,3 +7,5 @@
 *.pyc
 .DS_Store
 .DS_Store
+.DS_Store
+/Finanzen/__pycache__
