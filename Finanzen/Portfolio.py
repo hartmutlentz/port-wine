@@ -1,7 +1,7 @@
 import yfinance as yf
 import numpy as np
 import pandas as pd
-from Finanzen.Asset import Asset
+from scipy.linalg import inv
 import Finanzen.Tools as tl
 from pprint import pprint
 
@@ -57,6 +57,7 @@ class Portfolio:
 
         self.prices = self.get_prices()
         self.returns = self.get_returns()
+        self.size = len(assets)
 
     def get_prices(self, price_time: str = "Close"):
         """Return price data."""
@@ -88,12 +89,12 @@ class Portfolio:
         return amounts
 
     def expected_return(self):
-        """Expectation value of returns."""
+        """Returns the expectation value of returns for each asset separately."""
         return self.returns.mean()
 
     def excpected_risk(self):
-        """Standard deviation."""
-        return self.returns.std()
+        """Standard deviation for each asset."""
+        return self.returns.var()
 
     def risk_profile(self):
         """"""
@@ -101,7 +102,7 @@ class Portfolio:
         df.columns=["Expected Return", "Risk"]
         return df
 
-    def correlation_matrix(self, as_numpy=False):
+    def correlation_matrix(self, as_numpy=True):
         """Correlation matrix between all assets as numpy matrix."""
         if self.is_single_asset:
             raise NotImplementedError('No (auto-)correlation for a single asset.')
@@ -111,7 +112,60 @@ class Portfolio:
             return self.returns.corr()
 
     def weight_vector(self):
-        return np.matrix(self.weights)
+        return np.array(self.weights)
+
+    def expected_return_vector(self):
+        return self.expected_return().to_numpy()
+
+    def global_minimum_variance_portfolio(self):
+        """Return the portfolio weights with global minimum.
+            Global minimum means minimum variance with constraint that weight add up to one, but
+            expected return is irrelevant.
+        """
+        sigma = self.correlation_matrix()
+        S2 = np.vstack((2. * sigma, np.ones((1, sigma.shape[0]))))
+        S2 = np.hstack((S2, np.ones((sigma.shape[0] + 1, 1))))
+        S2[-1, -1] = 0.
+
+        unit_vec = np.zeros((sigma.shape[0] + 1, 1))
+        unit_vec[-1, 0] = 1.
+
+        rslt = np.dot(inv(S2), unit_vec)[:-1]
+        return rslt.reshape((self.size, ))
+
+    def minimum_variance_portfolio(self, r):
+        """Return weights for the minimum portfolio given a desired return rate r."""
+        assert isinstance(r, float), "Return rate must be of float type."
+
+        sigma = self.correlation_matrix()
+
+        # stack weight vector on the right
+        S2 = np.hstack((2. * sigma, P.weight_vector().reshape((P.size, 1))))
+
+        # stack weight vector below. Define elongated weight vecor first.
+        wt = np.append(P.weight_vector(), np.zeros((1, 1)))
+        S2 = np.vstack((S2, wt))
+
+        # stack ones-vector on the right
+        S2 = np.hstack((S2, np.ones((sigma.shape[0] + 1, 1))))
+
+        # stack ones-vector below
+        S2 = np.vstack((S2, np.ones((1, sigma.shape[0] + 2))))
+
+        # replace lower right block with zeros
+        S2[-1, -1] = 0
+        S2[-2, -2] = 0
+        S2[-1, -2] = 0
+        S2[-2, -1] = 0
+
+        # compute result
+        unit_vec = np.zeros((sigma.shape[0] + 2, 1))
+        unit_vec[-1, 0] = 1.
+        unit_vec[-2, 0] = r
+
+        rslt = np.dot(inv(S2), unit_vec)[:-2]
+
+        return rslt.reshape((self.size, ))
 
     def total_value(self):
         """Return the total value of the portfolio as time series."""
@@ -129,8 +183,8 @@ if __name__ == "__main__":
     #a = ['AMZN', 'GOOG']
     P = Portfolio(assets=a)
     print(P.asset_names,'\n', P.weights, '\n', P.amounts)
-
     print(P.risk_profile())
+    print(P.weight_vector())
 
     #P = Portfolio(assets=['AMZN'])
     #print(P.returns)
@@ -141,5 +195,6 @@ if __name__ == "__main__":
     #print(np.matmul(np.matmul(w, sigma), w.T))
 
     #pprint(P.total_prices())
-
+    #print(P.global_minimum_variance_portfolio())
+    print(P.minimum_variance_portfolio(r=1.0))
 
