@@ -5,4 +5,4 @@ Portfolio optimization using Yahoo!-Finance data.
 [x] fix dict for weights (Hardy)
 [x] add Notebook
 [x] add matplotlib
-[] add Optimizer (Alan)
+[x] add Optimizer (-Alan- -> Hardy)
